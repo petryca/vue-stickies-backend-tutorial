@@ -4,6 +4,8 @@ Learn to build a complete REST API for managing sticky notes collections by codi
 
 ## Prerequisites
 - Node.js installed on your computer
+- Basic understanding of JavaScript
+- A text editor (VS Code recommended)
 - A terminal/command prompt
 
 ## Setup
@@ -306,7 +308,7 @@ curl -X GET http://localhost:3000/api/zzzzzzzz
 
 ## Step 11: Update Stickies (PUT Route)
 
-**What it does:** Replaces all sticky notes in a collection with new ones, or deletes the collection if empty.
+**What it does:** Replaces all sticky notes in a collection with new ones.
 
 **Add this route:**
 ```javascript
@@ -319,21 +321,13 @@ app.put('/api/:id', (req, res) => {
         return res.status(400).json({ error: 'Stickies must be an array' });
     }
 
+    if (stickies.length === 0) {
+        return res.status(400).json({ error: 'Stickies array cannot be empty. Use DELETE to remove stickies.' });
+    }
+
     const stickySet = findStickySetById(id);
     if (!stickySet) {
         return res.status(404).json({ error: 'Stickies not found' });
-    }
-
-    // If stickies array is empty, delete the entire stickySet
-    if (stickies.length === 0) {
-        const stickySetIndex = stickiesData.findIndex(set => set.id === id);
-        const deletedStickySet = stickiesData.splice(stickySetIndex, 1)[0];
-
-        return res.json({
-            message: 'Stickies deleted successfully',
-            id: deletedStickySet.id,
-            stickiesCount: deletedStickySet.stickies.length
-        });
     }
 
     // Replace all stickies with the provided array
@@ -346,10 +340,9 @@ app.put('/api/:id', (req, res) => {
 
 **How it works:**
 1. Gets ID and new stickies array
-2. Validates the array format
+2. Validates the array format and ensures it's not empty
 3. Finds the existing collection
-4. If new array is empty → deletes the entire collection
-5. Otherwise → replaces all stickies and updates timestamp
+4. Replaces all stickies and updates timestamp
 
 **Test it:**
 ```bash
@@ -358,7 +351,7 @@ curl -X PUT http://localhost:3000/api/a5k9m2x1 \
   -H "Content-Type: application/json" \
   -d '[{"id":1,"text":"Updated note","color":"blue","x":150,"y":250}, {"id":2,"text":"Second note","color":"green","x":300,"y":100}]'
 
-# Delete by sending empty array
+# Try to update with empty array (should return error)
 curl -X PUT http://localhost:3000/api/a5k9m2x1 \
   -H "Content-Type: application/json" \
   -d '[]'
@@ -366,7 +359,63 @@ curl -X PUT http://localhost:3000/api/a5k9m2x1 \
 
 ---
 
-## Step 12: Add Health Check Endpoint
+## Step 12: Delete Stickies (DELETE Route)
+
+**What it does:** Completely deletes a sticky notes collection by its ID.
+
+**Add this route:**
+```javascript
+// 4. Delete entire stickies collection
+app.delete('/api/:id', (req, res) => {
+    const id = req.params.id;
+
+    // Validate stickies ID format (8 alphanumeric characters)
+    if (!/^[a-z0-9]{8}$/.test(id)) {
+        return res.status(400).json({ error: 'Invalid stickies ID format' });
+    }
+
+    const stickySetIndex = stickiesData.findIndex(set => set.id === id);
+    
+    if (stickySetIndex === -1) {
+        return res.status(404).json({ error: 'Stickies not found' });
+    }
+
+    const deletedStickySet = stickiesData.splice(stickySetIndex, 1)[0];
+
+    res.json({
+        message: 'Stickies deleted successfully',
+        id: deletedStickySet.id,
+        stickiesCount: deletedStickySet.stickies.length
+    });
+});
+```
+
+**How it works:**
+1. Gets the ID from the URL parameter
+2. Validates the ID format
+3. Finds the collection index in the array
+4. Removes it from the array using `splice()`
+5. Returns confirmation with details about what was deleted
+
+**Test it:**
+```bash
+# Delete a sticky collection
+curl -X DELETE http://localhost:3000/api/a5k9m2x1
+
+# Expected response:
+# {
+#   "message": "Stickies deleted successfully",
+#   "id": "a5k9m2x1",
+#   "stickiesCount": 2
+# }
+
+# Try to delete the same collection again (should return 404)
+curl -X DELETE http://localhost:3000/api/a5k9m2x1
+```
+
+---
+
+## Step 13: Add Health Check Endpoint
 
 **What it does:** Provides statistics about the API - how many collections exist, total sticky notes, etc.
 
@@ -423,7 +472,7 @@ curl -X GET http://localhost:3000/api/health
 
 ---
 
-## Step 13: Add Error Handling
+## Step 14: Add Error Handling
 
 **What it does:** Catches unexpected errors and provides proper error responses.
 
@@ -486,19 +535,16 @@ curl -X GET http://localhost:3000/api/health
 
 ### 5. Delete the collection:
 ```bash
-curl -X PUT http://localhost:3000/api/[YOUR_ID_HERE] \
-  -H "Content-Type: application/json" \
-  -d '[]'
+curl -X DELETE http://localhost:3000/api/[YOUR_ID_HERE]
 ```
 
 ## Congratulations!
 
 You've built a complete REST API with:
-
 - ✅ Create sticky collections (POST)
 - ✅ Read sticky collections (GET)
 - ✅ Update sticky collections (PUT)
-- ✅ Delete sticky collections (PUT with empty array)
+- ✅ Delete sticky collections (DELETE)
 - ✅ Health monitoring
 - ✅ Static file serving
 - ✅ Error handling

@@ -234,28 +234,37 @@ async saveToServer() {
 
     this.isLoading = true;
     try {
-        const response = await fetch(`/api/${this.currentStickiesId}`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(this.stickies)
-        });
+        // Use DELETE route if stickies array is empty
+        if (this.stickies.length === 0) {
+            const response = await fetch(`/api/${this.currentStickiesId}`, {
+                method: 'DELETE'
+            });
 
-        if (response.ok) {
-            // Check if the server deleted the sticky set (empty stickies array)
-            if (this.stickies.length === 0) {
+            if (response.ok) {
                 console.log('Sticky set deleted on server, refreshing to new state');
                 this.refreshToNewStickySet();
                 return;
+            } else {
+                throw new Error(`Delete failed: ${response.status}`);
             }
-            
-            this.saveStatus = 'saved';
-            this.lastSaved = new Date();
-            this.hasUnsavedChanges = false;
-            console.log('Data saved to server');
         } else {
-            throw new Error(`Save failed: ${response.status}`);
+            // Use PUT route for updating existing stickies
+            const response = await fetch(`/api/${this.currentStickiesId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(this.stickies)
+            });
+
+            if (response.ok) {
+                this.saveStatus = 'saved';
+                this.lastSaved = new Date();
+                this.hasUnsavedChanges = false;
+                console.log('Data saved to server');
+            } else {
+                throw new Error(`Save failed: ${response.status}`);
+            }
         }
     } catch (error) {
         console.error('Failed to save to server:', error);
@@ -265,6 +274,11 @@ async saveToServer() {
     }
 }
 ```
+
+**Key Changes for DELETE Route:**
+- **Empty Array Check**: When `this.stickies.length === 0`, uses DELETE method
+- **No JSON Body**: DELETE requests don't need a request body
+- **Cleaner Logic**: Separates deletion from updating for better API semantics
 
 ---
 
@@ -352,9 +366,19 @@ watch: {
 
 ---
 
-## Step 6: Handle Deletion and Refresh
+## Step 6: Handle Deletion with Dedicated DELETE Route
 
-### 6.1 Update `deleteStickie()` Method
+### 6.1 Understanding the API Change
+
+The server now provides a dedicated `DELETE /api/:id` route for removing sticky sets. This is more RESTful than sending an empty array via PUT.
+
+**API Routes:**
+- `POST /api/` - Create new sticky set
+- `GET /api/:id` - Retrieve sticky set  
+- `PUT /api/:id` - Update existing sticky set
+- `DELETE /api/:id` - Delete sticky set (🆕 New route)
+
+### 6.2 Update `deleteStickie()` Method
 
 ```javascript
 deleteStickie(index) {
@@ -364,8 +388,8 @@ deleteStickie(index) {
 
         // Check if we deleted the last sticky
         if (this.stickies.length === 0) {
-            console.log('All stickies deleted, triggering refresh');
-            // The server will delete the sticky set when empty array is sent
+            console.log('All stickies deleted, triggering DELETE request');
+            // The server will delete the sticky set using DELETE /api/:id
             // This will trigger debouncedSave which will handle the server deletion
             return; // Don't focus since we'll be refreshing
         }
@@ -386,7 +410,7 @@ deleteStickie(index) {
 }
 ```
 
-### 6.2 Add Refresh Method
+### 6.3 Add Refresh Method
 
 ```javascript
 refreshToNewStickySet() {
@@ -467,8 +491,8 @@ clearStorage() {
 
 2. **Existing Content:**
    - Visit `/abc12345` - should load from server
-   - Make changes - should auto-save after 1 second
-   - Delete all stickies - should refresh to new state
+   - Make changes - should auto-save after 1 second using PUT
+   - Delete all stickies - should use DELETE route and refresh to new state
 
 3. **Error Handling:**
    - Disconnect internet - should show error status
@@ -532,11 +556,11 @@ Add visual indicators in your template:
 
 You've successfully migrated from localStorage to a robust server integration that provides:
 
-- ✅ **Automatic URL generation** for sharing
-- ✅ **Debounced auto-save** to reduce server load
-- ✅ **Graceful error handling** with user feedback
-- ✅ **Clean state management** when deleting all content
-- ✅ **Browser warning** for unsaved changes
-- ✅ **Collaborative potential** through shared URLs
+✅ **Automatic URL generation** for sharing
+✅ **Debounced auto-save** to reduce server load  
+✅ **Graceful error handling** with user feedback
+✅ **Clean state management** when deleting all content
+✅ **Browser warning** for unsaved changes
+✅ **Collaborative potential** through shared URLs
 
-The app now works as a true web application where users can create, edit, and share sticky note collections with persistent server storage and real-time auto-saving functionality.
+The app now works as a true web application where users can create, edit, and share sticky note collections with persistent server storage, real-time auto-saving functionality, and proper RESTful API usage including dedicated DELETE operations for removing sticky sets.
