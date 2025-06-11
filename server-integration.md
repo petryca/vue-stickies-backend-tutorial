@@ -172,7 +172,7 @@ async mounted() {
     window.addEventListener('beforeunload', (e) => {
         if (this.hasUnsavedChanges && this.saveStatus === 'saving') {
             e.preventDefault();
-            e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
+            return 'You have unsaved changes. Are you sure you want to leave?';
         }
     });
 }
@@ -182,7 +182,7 @@ async mounted() {
 
 - **URL Pattern**: Matches exactly 8 lowercase letters/numbers
 - **Fallback**: If no valid ID, starts with empty sticky
-- **User Warning**: Prevents accidental data loss when leaving page
+- **User Warning**: Prevents accidental data loss when leaving page (uses modern approach without deprecated `returnValue`)
 
 ---
 
@@ -515,7 +515,26 @@ Add this to your template for debugging:
 
 ## Step 9: Production Considerations
 
-### 9.1 Error Handling Improvements
+### 9.1 Modern Browser Warning Implementation
+
+**Note**: The `event.returnValue` property is deprecated. The modern approach uses only `preventDefault()` and `return`:
+
+```javascript
+// ✅ Modern approach (used in our code)
+window.addEventListener('beforeunload', (e) => {
+    if (this.hasUnsavedChanges && this.saveStatus === 'saving') {
+        e.preventDefault();
+        return 'You have unsaved changes. Are you sure you want to leave?';
+    }
+});
+
+// ❌ Deprecated approach (avoid)
+window.addEventListener('beforeunload', (e) => {
+    e.returnValue = 'Message'; // This is deprecated
+});
+```
+
+### 9.2 Error Handling Improvements
 
 ```javascript
 // Add retry logic for failed saves
@@ -532,7 +551,7 @@ async saveWithRetry(retries = 3) {
 }
 ```
 
-### 9.2 User Feedback Enhancements
+### 9.3 User Feedback Enhancements
 
 Add visual indicators in your template:
 ```html
@@ -543,7 +562,7 @@ Add visual indicators in your template:
 </div>
 ```
 
-### 9.3 Performance Optimizations
+### 9.4 Performance Optimizations
 
 - Consider delta updates for large sticky sets
 - Implement conflict resolution for collaborative editing
@@ -556,11 +575,11 @@ Add visual indicators in your template:
 
 You've successfully migrated from localStorage to a robust server integration that provides:
 
-✅ **Automatic URL generation** for sharing
-✅ **Debounced auto-save** to reduce server load  
-✅ **Graceful error handling** with user feedback
-✅ **Clean state management** when deleting all content
-✅ **Browser warning** for unsaved changes
-✅ **Collaborative potential** through shared URLs
+- ✅ **Automatic URL generation** for sharing
+- ✅ **Debounced auto-save** to reduce server load  
+- ✅ **Graceful error handling** with user feedback
+- ✅ **Clean state management** when deleting all content
+- ✅ **Browser warning** for unsaved changes
+- ✅ **Collaborative potential** through shared URLs
 
 The app now works as a true web application where users can create, edit, and share sticky note collections with persistent server storage, real-time auto-saving functionality, and proper RESTful API usage including dedicated DELETE operations for removing sticky sets.
