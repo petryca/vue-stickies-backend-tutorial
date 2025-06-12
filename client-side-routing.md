@@ -13,7 +13,7 @@ Currently, your stickies app works great when users create new stickies or visit
 - The Vue app should detect the stickies ID from the URL
 - Later, the Vue app can use this ID to load the specific stickies
 
-## Option 1: Update server.js
+## Option A: Update server.js
 
 ### Step 1: Add the required import
 Add this line at the top of your `server.js` file with your other imports:
